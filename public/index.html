@@ -1146,6 +1146,145 @@ footer {
 }
 
 
+
+/* =========================================================
+   NÚT CHAT ZALO NỔI - BAN CÔNG 3D SHOP
+========================================================= */
+
+.shop-zalo-button {
+    position: fixed;
+    right: 22px;
+    bottom: 100px;
+    z-index: 1000;
+
+    width: 60px;
+    height: 60px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: linear-gradient(135deg, #168aff, #0068ff);
+    color: #ffffff;
+
+    border-radius: 50%;
+    text-decoration: none;
+
+    box-shadow: 0 6px 20px rgba(0, 104, 255, 0.3);
+
+    animation: shopZaloFloat 3s ease-in-out infinite;
+    transition: transform 0.25s ease;
+}
+
+/* Vòng sáng lan tỏa */
+.shop-zalo-button::before {
+    content: "";
+    position: absolute;
+    inset: -7px;
+
+    border: 2px solid rgba(0, 104, 255, 0.35);
+    border-radius: 50%;
+
+    animation: shopZaloPulse 2s infinite;
+    pointer-events: none;
+}
+
+/* Hiệu ứng rê chuột */
+.shop-zalo-button:hover {
+    transform: scale(1.1);
+    animation-play-state: paused;
+}
+
+/* Nhãn Chat Zalo */
+.shop-zalo-tooltip {
+    position: absolute;
+    right: 72px;
+
+    background: #ffffff;
+    color: #0068ff;
+
+    padding: 9px 13px;
+    border-radius: 9px;
+
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(8px);
+
+    transition: 0.25s;
+    pointer-events: none;
+}
+
+.shop-zalo-button:hover .shop-zalo-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+}
+
+/* Hiệu ứng nổi nhẹ */
+@keyframes shopZaloFloat {
+    0%, 100% {
+        translate: 0 0;
+    }
+
+    50% {
+        translate: 0 -5px;
+    }
+}
+
+/* Hiệu ứng sóng lan tỏa */
+@keyframes shopZaloPulse {
+    0% {
+        transform: scale(0.85);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: scale(1.45);
+        opacity: 0;
+    }
+}
+
+/* =========================================================
+   HIỂN THỊ TRÊN ĐIỆN THOẠI
+========================================================= */
+
+@media (max-width: 600px) {
+    .shop-zalo-button {
+        width: 54px;
+        height: 54px;
+
+        right: 16px;
+
+        /* Nằm trên nút gọi điện */
+        bottom: calc(160px + env(safe-area-inset-bottom));
+    }
+
+    .shop-zalo-button svg {
+        width: 25px;
+        height: 25px;
+    }
+
+    .shop-zalo-tooltip {
+        display: none;
+    }
+}
+
+/* Tôn trọng tùy chọn giảm chuyển động */
+@media (prefers-reduced-motion: reduce) {
+    .shop-zalo-button,
+    .shop-zalo-button::before {
+        animation: none;
+    }
+}
+
+
+
 </style>
  </head>
  <body>
@@ -1363,6 +1502,49 @@ footer {
     </form>
    </div>
   </div>
+
+
+
+
+  
+<!-- =========================================
+     NÚT CHAT ZALO CHO CHỦ SHOP
+========================================== -->
+
+<a
+    href="https://zalo.me/0966198995"
+    class="shop-zalo-button"
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="Chat Zalo với chủ shop"
+    title="Chat Zalo với chủ shop"
+>
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="28"
+        height="28"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+    >
+        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8
+                 8.5 8.5 0 0 1-7.6 4.7
+                 8.38 8.38 0 0 1-3.8-.9
+                 L3 21l1.9-5.7
+                 a8.38 8.38 0 0 1-.9-3.8
+                 8.5 8.5 0 0 1 4.7-7.6
+                 8.38 8.38 0 0 1 3.8-.9h.5
+                 a8.48 8.48 0 0 1 8 8v.5z"/>
+    </svg>
+
+    <span class="shop-zalo-tooltip">
+        Chat Zalo
+    </span>
+</a>
 
 
 
