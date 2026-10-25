@@ -1546,48 +1546,93 @@ function saveOrder(order) {
 }
 
 // Xử lý khi khách xác nhận đơn hàng
-function handleOrderSubmit(event) {
+
+/* =========================================================
+   XÁC NHẬN ĐƠN HÀNG VÀ GỬI VỀ TELEGRAM
+========================================================= */
+
+async function handleOrderSubmit(event) {
     event.preventDefault();
 
     const form = event.target;
+    const submitButton = form.querySelector(
+        'button[type="submit"]'
+    );
 
-    const order = {
-        id: "BC3D-" + Date.now(),
-
-        items: {
-            ...cart
-        },
-
-        customer: Object.fromEntries(
-            new FormData(form)
-        ),
-
-        createdAt: new Date().toISOString()
-    };
-
-    try {
-        saveOrder(order);
-
-    } catch (error) {
-        alert("Không thể lưu đơn hàng. Vui lòng thử lại.");
+    // Tránh khách bấm liên tục
+    if (submitButton.disabled) {
         return;
     }
 
-    // Xóa giỏ hàng sau khi lưu đơn
-    cart = {};
-
-    save();
-    renderCart();
-    closeModal();
-
-    form.reset();
-
-    alert(
-        "Đã tạo đơn hàng" +
-        order.id +
-        ". Đơn hàng đã được gửi đến cửa hàng."
+    const customer = Object.fromEntries(
+        new FormData(form)
     );
+
+    const items = getCartProducts().map((product) => ({
+        id: product.id,
+        quantity: Number(cart[product.id])
+    }));
+
+    if (items.length === 0) {
+        alert("Giỏ hàng đang trống.");
+        return;
+    }
+
+    // Khóa nút trong lúc gửi
+    submitButton.disabled = true;
+    submitButton.textContent = "Đang gửi đơn hàng...";
+
+    try {
+        const response = await fetch("/api/orders", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                customer,
+                items
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+            throw new Error(
+                result.error || "Không thể gửi đơn hàng"
+            );
+        }
+
+        // Chỉ xóa giỏ hàng khi máy chủ báo thành công
+        cart = {};
+
+        save();
+        renderCart();
+        closeModal();
+
+        form.reset();
+
+        alert(
+            "✅ Đặt hàng thành công!\n\n" +
+            "Mã đơn: " + result.orderId + "\n" +
+            "Tổng tiền: " + money(result.total) + "\n\n" +
+            "Cửa hàng đã nhận được thông báo."
+        );
+
+    } catch (error) {
+        console.error("Lỗi đặt hàng:", error);
+
+        alert(
+            "❌ " + error.message + "\n\n" +
+            "Giỏ hàng vẫn được giữ lại. " +
+            "Vui lòng kiểm tra trước khi thử lại."
+        );
+
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Xác nhận đơn hàng";
+    }
 }
+
 
 
 /* =========================================================

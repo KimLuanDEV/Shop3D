@@ -6,6 +6,258 @@ import crypto from 'node:crypto';
 const app=express();
 const root=path.join(path.dirname(fileURLToPath(import.meta.url)),'public');
 app.use(express.json({limit:'3mb'}));
+
+
+
+/* =========================================================
+   TELEGRAM - NHẬN THÔNG BÁO ĐƠN HÀNG
+========================================================= */
+
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+// Giới hạn kích thước và độ dài thông tin
+const MAX_ORDER_ITEMS = 50;
+
+function cleanOrderText(value, maxLength = 300) {
+    return String(value ?? "").trim().slice(0, maxLength);
+}
+
+function formatVND(value) {
+    return Number(value).toLocaleString("vi-VN") + "đ";
+}
+
+function escapeTelegramHTML(value) {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+async function sendTelegramOrder(message) {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+        throw new Error("Chưa cấu hình Telegram trên Render");
+    }
+
+    const response = await fetch(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                chat_id: TELEGRAM_CHAT_ID,
+                text: message,
+                parse_mode: "HTML"
+            }),
+            signal: AbortSignal.timeout(10000)
+        }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.ok) {
+        throw new Error(
+            result.description || "Telegram không nhận được thông báo"
+        );
+    }
+
+    return result;
+}
+
+/* =========================================================
+   API - KHÁCH XÁC NHẬN ĐƠN HÀNG
+========================================================= */
+
+app.post("/api/orders", async (req, res) => {
+    try {
+        const { customer, items } = req.body || {};
+
+        // 1. Kiểm tra thông tin khách hàng
+        const name = cleanOrderText(customer?.name, 120);
+        const phone = cleanOrderText(customer?.phone, 20);
+        const address = cleanOrderText(customer?.address, 500);
+
+        if (!name || !phone || !address) {
+            return res.status(400).json({
+                error: "Vui lòng nhập đầy đủ thông tin giao hàng"
+            });
+        }
+
+        if (!/^[0-9+ .()-]{9,18}$/.test(phone)) {
+            return res.status(400).json({
+                error: "Số điện thoại không hợp lệ"
+            });
+        }
+
+        // 2. Kiểm tra danh sách sản phẩm
+        if (
+            !Array.isArray(items) ||
+            items.length === 0 ||
+            items.length > MAX_ORDER_ITEMS
+        ) {
+            return res.status(400).json({
+                error: "Giỏ hàng không hợp lệ"
+            });
+        }
+
+        // 3. Lấy giá sản phẩm từ PostgreSQL
+        // Không tin giá do trình duyệt gửi lên.
+        const ids = [];
+        const quantities = new Map();
+
+        for (const item of items) {
+            const id = String(item.id ?? "");
+            const quantity = Number(item.quantity);
+
+            if (
+                !/^\d+$/.test(id) ||
+                !Number.isSafeInteger(quantity) ||
+                quantity < 1 ||
+                quantity > 100
+            ) {
+                return res.status(400).json({
+                    error: "Sản phẩm hoặc số lượng không hợp lệ"
+                });
+            }
+
+            if (!quantities.has(id)) {
+                ids.push(id);
+                quantities.set(id, quantity);
+            } else {
+                return res.status(400).json({
+                    error: "Sản phẩm bị trùng trong giỏ hàng"
+                });
+            }
+        }
+
+        /*
+         * LƯU Ý:
+         * Ví dụ này giả định server.js đã có biến `pool`
+         * kết nối PostgreSQL bằng thư viện pg.
+         *
+         * Bảng products có các cột:
+         * id, name, price, stock.
+         *
+         * Nếu server của bạn đặt tên khác,
+         * cần sửa câu truy vấn bên dưới.
+         */
+
+        const queryResult = await pool.query(
+            `
+                SELECT id, name, price, stock
+                FROM products
+                WHERE id::text = ANY($1::text[])
+            `,
+            [ids]
+        );
+
+        if (queryResult.rows.length !== ids.length) {
+            return res.status(400).json({
+                error: "Một số sản phẩm không còn tồn tại"
+            });
+        }
+
+        const productMap = new Map(
+            queryResult.rows.map((product) => [
+                String(product.id),
+                product
+            ])
+        );
+
+        let total = 0;
+        const orderLines = [];
+
+        for (const id of ids) {
+            const product = productMap.get(id);
+            const quantity = quantities.get(id);
+
+            const price = Number(product.price);
+            const stock = Number(product.stock);
+
+            if (
+                !Number.isSafeInteger(price) ||
+                price < 0 ||
+                stock < quantity
+            ) {
+                return res.status(400).json({
+                    error: `Sản phẩm "${product.name}" không đủ hàng hoặc giá không hợp lệ`
+                });
+            }
+
+            const subtotal = price * quantity;
+
+            total += subtotal;
+
+            orderLines.push(
+                `• ${escapeTelegramHTML(product.name)}\n` +
+                `  SL: ${quantity} × ${formatVND(price)}\n` +
+                `  Thành tiền: ${formatVND(subtotal)}`
+            );
+        }
+
+        if (!Number.isSafeInteger(total)) {
+            return res.status(400).json({
+                error: "Tổng tiền không hợp lệ"
+            });
+        }
+
+        // 4. Tạo mã đơn hàng
+        const orderId =
+            "BC3D-" +
+            Date.now() +
+            "-" +
+            Math.random().toString(36).slice(2, 8).toUpperCase();
+
+        const createdAt = new Date();
+
+        // 5. Tạo nội dung Telegram
+        const message = [
+            "🛒 <b>ĐƠN HÀNG MỚI - BAN CÔNG 3D</b>",
+            "",
+            `🆔 Mã đơn: <code>${orderId}</code>`,
+            `🕒 Thời gian: ${createdAt.toLocaleString("vi-VN", {
+                timeZone: "Asia/Ho_Chi_Minh"
+            })}`,
+            "",
+            "👤 <b>THÔNG TIN KHÁCH HÀNG</b>",
+            `Họ tên: ${escapeTelegramHTML(name)}`,
+            `SĐT: ${escapeTelegramHTML(phone)}`,
+            `Địa chỉ: ${escapeTelegramHTML(address)}`,
+            "",
+            "📦 <b>SẢN PHẨM ĐẶT MUA</b>",
+            ...orderLines,
+            "",
+            `💰 <b>TỔNG TIỀN: ${formatVND(total)}</b>`,
+            "💵 Thanh toán: COD",
+            "",
+            "📌 Vui lòng liên hệ khách để xác nhận."
+        ].join("\n");
+
+        // 6. Gửi Telegram
+        await sendTelegramOrder(message);
+
+        // 7. Trả kết quả thành công
+        return res.status(201).json({
+            success: true,
+            orderId,
+            total,
+            message: "Đơn hàng đã được gửi đến cửa hàng"
+        });
+
+    } catch (error) {
+        console.error("Lỗi gửi đơn hàng:", error);
+
+        return res.status(502).json({
+            error: "Chưa thể gửi đơn hàng. Vui lòng thử lại."
+        });
+    }
+});
+
+
+
 const {DATABASE_URL,ADMIN_PASSWORD}=process.env;
 if(!DATABASE_URL||!ADMIN_PASSWORD){console.error('Missing DATABASE_URL or ADMIN_PASSWORD');process.exit(1)}
 const db=new pg.Pool({connectionString:DATABASE_URL,ssl:DATABASE_URL.includes('localhost')?false:{rejectUnauthorized:false}});
