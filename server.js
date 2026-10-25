@@ -113,7 +113,8 @@ app.post("/api/orders", async (req, res) => {
             const quantity = Number(item.quantity);
 
             if (
-                !/^\d+$/.test(id) ||
+                !id ||
+                id.length > 100 ||
                 !Number.isSafeInteger(quantity) ||
                 quantity < 1 ||
                 quantity > 100
@@ -145,7 +146,7 @@ app.post("/api/orders", async (req, res) => {
          * cần sửa câu truy vấn bên dưới.
          */
 
-        const queryResult = await pool.query(
+        const queryResult = await db.query(
             `
                 SELECT id, name, price, stock
                 FROM products
@@ -174,18 +175,43 @@ app.post("/api/orders", async (req, res) => {
             const product = productMap.get(id);
             const quantity = quantities.get(id);
 
-            const price = Number(product.price);
-            const stock = Number(product.stock);
 
-            if (
-                !Number.isSafeInteger(price) ||
-                price < 0 ||
-                stock < quantity
-            ) {
-                return res.status(400).json({
-                    error: `Sản phẩm "${product.name}" không đủ hàng hoặc giá không hợp lệ`
-                });
-            }
+/* =========================================================
+   KIỂM TRA GIÁ BÁN VÀ SỐ LƯỢNG TỒN KHO
+========================================================= */
+
+const price = Number(product.price);
+const stock = Number(product.stock);
+
+// Kiểm tra giá sản phẩm
+if (
+    !Number.isFinite(price) ||
+    price < 0
+) {
+    return res.status(400).json({
+        error: `Giá sản phẩm "${product.name}" không hợp lệ`
+    });
+}
+
+// Kiểm tra dữ liệu tồn kho
+if (
+    !Number.isInteger(stock) ||
+    stock < 0
+) {
+    return res.status(400).json({
+        error: `Dữ liệu tồn kho của "${product.name}" không hợp lệ`
+    });
+}
+
+// Kiểm tra số lượng khách đặt
+if (stock < quantity) {
+    return res.status(400).json({
+        error:
+            `Sản phẩm "${product.name}" chỉ còn ${stock} sản phẩm. ` +
+            `Bạn đang đặt ${quantity} sản phẩm.`
+    });
+}
+
 
             const subtotal = price * quantity;
 
