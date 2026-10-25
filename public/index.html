@@ -1004,6 +1004,148 @@ footer {
 
 
 
+/* =========================================================
+   NÚT GỌI ĐIỆN NỔI - BAN CÔNG 3D SHOP
+========================================================= */
+
+.shop-call-button {
+    position: fixed;
+    right: 22px;
+    bottom: 25px;
+    z-index: 1000;
+
+    width: 60px;
+    height: 60px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: linear-gradient(135deg, #20b765, #087b3c);
+    color: #ffffff;
+
+    border-radius: 50%;
+    text-decoration: none;
+
+    box-shadow:
+        0 6px 20px rgba(0, 120, 60, 0.3);
+
+    animation: shopCallShake 4s infinite;
+    transition: transform 0.25s ease;
+}
+
+/* Vòng sáng lan tỏa */
+.shop-call-button::before {
+    content: "";
+    position: absolute;
+    inset: -7px;
+
+    border: 2px solid rgba(25, 170, 80, 0.45);
+    border-radius: 50%;
+
+    animation: shopCallPulse 2s infinite;
+    pointer-events: none;
+}
+
+/* Khi rê chuột vào */
+.shop-call-button:hover {
+    transform: scale(1.1);
+    animation-play-state: paused;
+}
+
+/* Nhãn gọi ngay */
+.shop-call-tooltip {
+    position: absolute;
+    right: 72px;
+
+    background: #ffffff;
+    color: #168546;
+
+    padding: 9px 13px;
+    border-radius: 9px;
+
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(8px);
+
+    transition: 0.25s;
+    pointer-events: none;
+}
+
+.shop-call-button:hover .shop-call-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+}
+
+/* Hiệu ứng rung nhẹ */
+@keyframes shopCallShake {
+    0%, 88%, 100% {
+        rotate: 0deg;
+    }
+
+    90%, 94% {
+        rotate: -12deg;
+    }
+
+    92%, 96% {
+        rotate: 12deg;
+    }
+}
+
+/* Hiệu ứng sóng lan tỏa */
+@keyframes shopCallPulse {
+    0% {
+        transform: scale(0.85);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: scale(1.45);
+        opacity: 0;
+    }
+}
+
+/* =========================================================
+   HIỂN THỊ TRÊN ĐIỆN THOẠI
+========================================================= */
+
+@media (max-width: 600px) {
+    .shop-call-button {
+        width: 54px;
+        height: 54px;
+
+        right: 16px;
+
+        /* Nằm phía trên thanh menu dưới */
+        bottom: calc(92px + env(safe-area-inset-bottom));
+    }
+
+    .shop-call-button svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .shop-call-tooltip {
+        display: none;
+    }
+}
+
+/* Hạn chế chuyển động nếu người dùng yêu cầu */
+@media (prefers-reduced-motion: reduce) {
+    .shop-call-button,
+    .shop-call-button::before {
+        animation: none;
+    }
+}
+
+
 </style>
  </head>
  <body>
@@ -1221,9 +1363,44 @@ footer {
     </form>
    </div>
   </div>
-  <script >
 
-    
+
+
+<!-- =========================================
+     NÚT GỌI ĐIỆN CHO CHỦ SHOP
+========================================== -->
+
+<a
+    href="tel:0966198995"
+    class="shop-call-button"
+    aria-label="Gọi điện cho chủ shop"
+    title="Gọi ngay cho chủ shop"
+>
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="27"
+        height="27"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+    >
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 11.19 18a19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.09 3.18 2 2 0 0 1 4.08 1h3a2 2 0 0 1 2 1.72c.13.96.37 1.91.7 2.81a2 2 0 0 1-.45 2.11L8.06 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>
+    </svg>
+
+    <span class="shop-call-tooltip">
+        Gọi ngay
+    </span>
+</a>
+
+
+
+
+
+  <script >
 "use strict";
 
 /* =========================================================
@@ -2111,8 +2288,11 @@ if (document.readyState === "loading") {
     initializeShop();
 }
 
-
   </script>
+
+
+
+
  </body>
 </html>
 
