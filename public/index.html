@@ -934,6 +934,75 @@ footer {
 
 
 
+/* =========================================================
+   HIỆU ỨNG SẢN PHẨM BAY VÀO GIỎ HÀNG
+========================================================= */
+
+/* Ảnh sản phẩm đang bay */
+.fly-to-cart {
+    position: fixed;
+    z-index: 9998;
+
+    width: 90px;
+    height: 90px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #ffffff;
+    border: 2px solid #b9dfc4;
+    border-radius: 16px;
+
+    box-shadow: 0 12px 30px rgba(22, 133, 70, 0.25);
+
+    overflow: hidden;
+    pointer-events: none;
+    will-change: transform, opacity;
+}
+
+.fly-to-cart img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Giỏ hàng nảy lên khi nhận sản phẩm */
+@keyframes cartBounce {
+    0%, 100% {
+        transform: scale(1);
+    }
+
+    35% {
+        transform: scale(1.18);
+    }
+
+    65% {
+        transform: scale(0.94);
+    }
+}
+
+.cart-bounce {
+    animation: cartBounce 0.45s ease;
+}
+
+/* Nút thêm sản phẩm */
+.add:active {
+    transform: scale(0.96);
+}
+
+/* Tôn trọng cài đặt giảm chuyển động */
+@media (prefers-reduced-motion: reduce) {
+    .cart-bounce {
+        animation: none;
+    }
+
+    .fly-to-cart {
+        display: none;
+    }
+}
+
+
 
 </style>
  </head>
@@ -1511,6 +1580,157 @@ function showCartToast(productName) {
 
 
 
+/* =========================================================
+   HIỆU ỨNG ẢNH SẢN PHẨM BAY VÀO GIỎ HÀNG
+========================================================= */
+
+function flyToCart(button) {
+
+    // Kiểm tra thiết bị có yêu cầu giảm chuyển động không
+    const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    // Xác định giỏ hàng:
+    // Desktop: nút trên header
+    // Mobile: nút trên thanh điều hướng dưới cùng
+    const mobileCart = document.querySelector(
+        '.mobile-nav button[onclick="openCart()"]'
+    );
+
+    const desktopCart = document.querySelector(".cartbtn");
+
+    const isMobile = window.innerWidth <= 600;
+
+    const cartButton = isMobile && mobileCart
+        ? mobileCart
+        : desktopCart;
+
+    if (!cartButton) {
+        return;
+    }
+
+
+    // Hiệu ứng nảy của nút giỏ hàng
+    function bounceCart() {
+        cartButton.classList.remove("cart-bounce");
+
+        // Khởi động lại animation
+        void cartButton.offsetWidth;
+
+        cartButton.classList.add("cart-bounce");
+
+        setTimeout(() => {
+            cartButton.classList.remove("cart-bounce");
+        }, 450);
+    }
+
+    if (reduceMotion) {
+        return;
+    }
+
+    // Tìm thẻ sản phẩm được nhấn
+    const productCard = button.closest(".product");
+
+    if (!productCard) {
+        bounceCart();
+        return;
+    }
+
+    // Lấy hình ảnh hoặc emoji sản phẩm
+    const productVisual = productCard.querySelector(".visual");
+
+    if (!productVisual) {
+        bounceCart();
+        return;
+    }
+
+    const productImage = productVisual.querySelector("img");
+
+    // Lấy vị trí bắt đầu và kết thúc
+    const startRect = productVisual.getBoundingClientRect();
+    const endRect = cartButton.getBoundingClientRect();
+
+    const startX = startRect.left + startRect.width / 2;
+    const startY = startRect.top + startRect.height / 2;
+
+    const endX = endRect.left + endRect.width / 2;
+    const endY = endRect.top + endRect.height / 2;
+
+    // Tạo phần tử ảnh bay
+    const flyingItem = document.createElement("div");
+
+    flyingItem.className = "fly-to-cart";
+
+    if (productImage) {
+
+        const image = document.createElement("img");
+
+        image.src = productImage.currentSrc || productImage.src;
+        image.alt = "";
+
+        flyingItem.appendChild(image);
+
+    } else {
+
+        // Nếu sản phẩm chưa có ảnh, dùng emoji
+        flyingItem.textContent = "📦";
+        flyingItem.style.fontSize = "45px";
+    }
+
+    // Đặt ảnh ở vị trí sản phẩm
+    flyingItem.style.left = (startX - 45) + "px";
+    flyingItem.style.top = (startY - 45) + "px";
+
+    document.body.appendChild(flyingItem);
+
+    // Tính khoảng cách bay
+    const deltaX = endX - startX;
+    const deltaY = endY - startY;
+
+    // Tạo quỹ đạo bay theo đường cong
+    const animation = flyingItem.animate(
+        [
+            {
+                transform:
+                    "translate(0px, 0px) scale(1)",
+                opacity: 1,
+                offset: 0
+            },
+            {
+                transform:
+                    `translate(${deltaX * 0.45}px, ${deltaY * 0.25 - 75}px) scale(0.8)`,
+                opacity: 1,
+                offset: 0.45
+            },
+            {
+                transform:
+                    `translate(${deltaX}px, ${deltaY}px) scale(0.15)`,
+                opacity: 0.2,
+                offset: 1
+            }
+        ],
+        {
+            duration: 800,
+            easing: "ease-in-out",
+            fill: "forwards"
+        }
+    );
+
+    // Khi ảnh bay đến giỏ hàng
+    animation.onfinish = () => {
+        flyingItem.remove();
+        bounceCart();
+    };
+
+    // Dọn dẹp nếu animation bị hủy
+    animation.oncancel = () => {
+        flyingItem.remove();
+    };
+}
+
+
+
 
 /* =========================================================
    THÊM SẢN PHẨM VÀO GIỎ HÀNG
@@ -1830,16 +2050,29 @@ function initializeShop() {
         renderProducts
     );
 
-    // Xử lý thêm sản phẩm vào giỏ
-    $("grid").addEventListener("click", (event) => {
-        const button = event.target.closest("[data-add-id]");
 
-        if (!button) {
-            return;
-        }
+/* =========================================================
+   THÊM SẢN PHẨM + HIỆU ỨNG BAY VÀO GIỎ
+========================================================= */
 
-        add(button.dataset.addId);
-    });
+$("grid").addEventListener("click", (event) => {
+
+    const button = event.target.closest("[data-add-id]");
+
+    if (!button) {
+        return;
+    }
+
+    // Lấy ID sản phẩm
+    const productId = button.dataset.addId;
+
+    // Thêm sản phẩm vào giỏ như bình thường
+    add(productId);
+
+    // Kích hoạt hiệu ứng bay từ sản phẩm vào giỏ
+    flyToCart(button);
+});
+
 
     // Xử lý tăng giảm số lượng trong giỏ
     $("cartItems").addEventListener("click", (event) => {
