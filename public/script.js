@@ -25,8 +25,8 @@ let cart = {};
 const PRODUCTS_API = "/api/products";
 
 // Khóa lưu trữ trên trình duyệt
-const CART_STORAGE_KEY = "nova_cart";
-const ORDER_STORAGE_KEY = "nova_orders";
+const CART_STORAGE_KEY = "bc3d_cart";
+const ORDER_STORAGE_KEY = "bc3d_orders";
 
 
 /* =========================================================
@@ -526,7 +526,7 @@ function handleOrderSubmit(event) {
     const form = event.target;
 
     const order = {
-        id: "NOVA-" + Date.now(),
+        id: "BC3D-" + Date.now(),
 
         items: {
             ...cart
