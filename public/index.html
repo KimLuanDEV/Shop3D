@@ -1285,6 +1285,72 @@ footer {
 
 
 
+
+/* ==========================================
+   HIỂN THỊ ĐẦY ĐỦ ẢNH SẢN PHẨM
+========================================== */
+
+/* Khung ảnh sản phẩm */
+.grid .product .visual {
+    width: 100%;
+    height: 260px;
+    padding: 12px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #f7faf7;
+    overflow: hidden;
+}
+
+/* Ảnh sản phẩm */
+.grid .product .visual img {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    max-width: 100%;
+    max-height: 100%;
+
+    object-fit: contain;
+    object-position: center;
+
+    transform: none;
+    transition: none;
+}
+
+/* Không phóng to ảnh khi rê chuột */
+.grid .product:hover .visual img {
+    transform: none;
+}
+
+/* Máy tính bảng */
+@media (max-width: 900px) {
+    .grid .product .visual {
+        height: 240px;
+        padding: 10px;
+    }
+}
+
+/* Điện thoại */
+@media (max-width: 600px) {
+    .grid .product .visual {
+        height: auto;
+        aspect-ratio: 1 / 1;
+        padding: 8px;
+    }
+
+    .grid .product .visual img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+}
+
+
+
 </style>
  </head>
  <body>
@@ -1376,6 +1442,7 @@ footer {
       <p>
        Những lựa chọn được yêu thích tại BAN CÔNG 3D Shop
       </p>
+
      </div>
      <span class="muted" id="resultCount">
      </span>
@@ -1386,6 +1453,7 @@ footer {
     </div>
    </section>
    <section class="benefits" id="benefits">
+
     <div>
      🚚
      <strong>
@@ -1812,25 +1880,31 @@ function getFilteredProducts() {
    7. HIỂN THỊ SẢN PHẨM TRÊN CỬA HÀNG
 ========================================================= */
 
-// Tạo hình ảnh sản phẩm
+
+/* ==========================================
+   TẠO HÌNH ẢNH SẢN PHẨM
+========================================== */
+
 function createProductImage(product) {
+
+    // Sản phẩm chưa có hình ảnh
     if (!product.image) {
         return "📦";
     }
 
+    // Hiển thị ảnh đầy đủ
     return `
         <img
             src="${escapeHTML(product.image)}"
             alt="${escapeHTML(product.name)}"
             loading="lazy"
-            style="
-                width: 100%;
-                height: 100%;
-                object-fit: contain;
-            "
+            decoding="async"
+            class="product-image"
         >
     `;
 }
+
+
 
 // Tạo thẻ HTML cho một sản phẩm
 function createProductCard(product) {
