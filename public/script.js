@@ -557,9 +557,9 @@ function handleOrderSubmit(event) {
     form.reset();
 
     alert(
-        "Đã tạo đơn hàng demo " +
+        "Đã tạo đơn hàng" +
         order.id +
-        ". Đơn chưa được gửi đến cửa hàng."
+        ". Đơn hàng đã được gửi đến cửa hàng."
     );
 }
 
