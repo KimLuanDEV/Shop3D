@@ -1008,12 +1008,13 @@ $("image").onchange = async (event) => {
 
     if (imagesData.length + files.length > 5) {
 
-        alert(
-            "Mỗi sản phẩm chỉ được tối đa 5 ảnh.\n" +
-            "Hiện tại đã có " +
-            imagesData.length +
-            " ảnh."
-        );
+await modalAlert(
+    "Mỗi sản phẩm chỉ được tối đa 5 ảnh.\n" +
+    "Hiện tại đã có " +
+    imagesData.length +
+    " ảnh.",
+    "warning"
+);
 
         return;
     }
@@ -1038,11 +1039,13 @@ $("image").onchange = async (event) => {
 
         if (!allowedTypes.includes(file.type)) {
 
-            alert(
-                'Ảnh "' +
-                file.name +
-                '" không đúng định dạng.'
-            );
+await modalAlert(
+    'Ảnh "' +
+    file.name +
+    '" không đúng định dạng.\n' +
+    "Chỉ hỗ trợ JPG, PNG và WebP.",
+    "error"
+);
 
             return;
         }
@@ -1050,11 +1053,13 @@ $("image").onchange = async (event) => {
 
         if (file.size > MAX_ORIGINAL_SIZE) {
 
-            alert(
-                'Ảnh "' +
-                file.name +
-                '" vượt quá 10 MB.'
-            );
+await modalAlert(
+    'Ảnh "' +
+    file.name +
+    '" vượt quá 10 MB.\n' +
+    "Vui lòng chọn ảnh có dung lượng nhỏ hơn.",
+    "warning"
+);
 
             return;
         }

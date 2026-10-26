@@ -1553,6 +1553,132 @@ footer {
 
 
 
+
+/* =========================================
+   MODAL THÔNG BÁO BAN CÔNG 3D SHOP
+========================================= */
+
+.shop-alert {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 18px;
+    background: rgba(12, 35, 23, .60);
+    backdrop-filter: blur(5px);
+    animation: shopAlertFade .2s ease;
+}
+
+.shop-alert[hidden] {
+    display: none;
+}
+
+.shop-alert-box {
+    width: min(420px, 100%);
+    max-height: 90dvh;
+    overflow-y: auto;
+    background: white;
+    border-radius: 22px;
+    padding: 30px 25px 25px;
+    text-align: center;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, .22);
+    animation: shopAlertPop .25s ease;
+}
+
+.shop-alert-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 34px;
+    font-weight: 800;
+}
+
+.shop-alert.success .shop-alert-icon {
+    color: #15803d;
+    background: #dcfce7;
+}
+
+.shop-alert.error .shop-alert-icon {
+    color: #dc2626;
+    background: #fee2e2;
+}
+
+.shop-alert.warning .shop-alert-icon {
+    color: #d97706;
+    background: #fef3c7;
+}
+
+.shop-alert.info .shop-alert-icon {
+    color: #2563eb;
+    background: #dbeafe;
+}
+
+.shop-alert-title {
+    margin: 0 0 12px;
+    font-size: 22px;
+    color: #173a29;
+    font-weight: 800;
+}
+
+.shop-alert-message {
+    margin: 0 0 24px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: #607366;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.shop-alert-button {
+    width: 100%;
+    padding: 14px;
+    border: 0;
+    border-radius: 12px;
+    color: white;
+    background: linear-gradient(135deg, #20a45a, #087b3c);
+    font-size: 15px;
+    font-weight: 750;
+    cursor: pointer;
+}
+
+.shop-alert-button:hover {
+    filter: brightness(.95);
+}
+
+.shop-alert-button:focus-visible {
+    outline: 3px solid #86efac;
+    outline-offset: 3px;
+}
+
+@keyframes shopAlertFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes shopAlertPop {
+    from {
+        opacity: 0;
+        transform: translateY(16px) scale(.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .shop-alert,
+    .shop-alert-box {
+        animation: none;
+    }
+}
+
+
 </style>
  </head>
  <body>
@@ -1896,6 +2022,37 @@ footer {
 
 
 
+<!-- MODAL THÔNG BÁO CỬA HÀNG -->
+<div id="shopAlert" class="shop-alert info"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="shopAlertTitle"
+     aria-describedby="shopAlertMessage"
+     hidden>
+
+    <div class="shop-alert-box">
+
+        <div id="shopAlertIcon"
+             class="shop-alert-icon"
+             aria-hidden="true">i</div>
+
+        <h3 id="shopAlertTitle"
+            class="shop-alert-title">
+            Thông báo
+        </h3>
+
+        <p id="shopAlertMessage"
+           class="shop-alert-message"></p>
+
+        <button id="shopAlertButton"
+                class="shop-alert-button"
+                type="button">
+            Đã hiểu
+        </button>
+
+    </div>
+</div>
+
 
   <script >
 "use strict";
@@ -1936,6 +2093,93 @@ const ORDER_STORAGE_KEY = "bc3d_orders";
 function $(id) {
     return document.getElementById(id);
 }
+
+
+/* =========================================
+   HỆ THỐNG MODAL THÔNG BÁO
+========================================= */
+
+const shopAlertQueue = [];
+let shopAlertActive = false;
+
+function showShopAlert(message, type = "info") {
+    return new Promise(resolve => {
+        shopAlertQueue.push({
+            message: String(message),
+            type,
+            resolve
+        });
+
+        processShopAlertQueue();
+    });
+}
+
+function processShopAlertQueue() {
+    if (shopAlertActive || shopAlertQueue.length === 0) {
+        return;
+    }
+
+    shopAlertActive = true;
+
+    const current = shopAlertQueue.shift();
+    const modal = $("shopAlert");
+    const icon = $("shopAlertIcon");
+    const title = $("shopAlertTitle");
+    const message = $("shopAlertMessage");
+    const button = $("shopAlertButton");
+
+    const types = {
+        success: ["✓", "Thành công!"],
+        error: ["✕", "Có lỗi xảy ra"],
+        warning: ["!", "Thông báo"],
+        info: ["i", "Thông báo"]
+    };
+
+    const selectedType = types[current.type]
+        ? current.type
+        : "info";
+
+    const [symbol, heading] = types[selectedType];
+
+    modal.className = "shop-alert " + selectedType;
+    icon.textContent = symbol;
+    title.textContent = heading;
+    message.textContent = current.message;
+
+    const previousFocus = document.activeElement;
+
+    function close() {
+        modal.hidden = true;
+        button.removeEventListener("click", close);
+        document.removeEventListener("keydown", onKey);
+
+        if (previousFocus &&
+            typeof previousFocus.focus === "function" &&
+            previousFocus.isConnected) {
+            previousFocus.focus();
+        }
+
+        shopAlertActive = false;
+        current.resolve();
+        processShopAlertQueue();
+    }
+
+    function onKey(event) {
+        if (event.key === "Escape" ||
+            event.key === "Enter") {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            close();
+        }
+    }
+
+    button.addEventListener("click", close);
+    document.addEventListener("keydown", onKey, true);
+
+    modal.hidden = false;
+    button.focus();
+}
+
 
 // Định dạng tiền Việt Nam
 function money(value) {
@@ -2426,7 +2670,7 @@ function add(id) {
 
     // Kiểm tra sản phẩm có tồn tại không
     if (!product) {
-        alert("Sản phẩm không tồn tại.");
+        showShopAlert("Sản phẩm không tồn tại.", "error");
         return;
     }
 
@@ -2582,7 +2826,10 @@ function closeCart() {
 // Mở form thanh toán
 function checkout() {
     if (getCartProducts().length === 0) {
-        alert("Vui lòng thêm sản phẩm vào giỏ hàng.");
+        showShopAlert(
+    "Vui lòng chọn ít nhất một sản phẩm trước khi thanh toán.",
+    "warning"
+);
         return;
     }
 
@@ -2655,7 +2902,10 @@ async function handleOrderSubmit(event) {
     }));
 
     if (items.length === 0) {
-        alert("Giỏ hàng đang trống.");
+        await showShopAlert(
+    "Giỏ hàng của bạn đang trống. Vui lòng chọn sản phẩm để tiếp tục.",
+    "warning"
+);
         return;
     }
 
@@ -2692,21 +2942,23 @@ async function handleOrderSubmit(event) {
 
         form.reset();
 
-        alert(
-            "✅ Đặt hàng thành công!\n\n" +
-            "Mã đơn: " + result.orderId + "\n" +
-            "Tổng tiền: " + money(result.total) + "\n\n" +
-            "Cửa hàng đã nhận được thông báo."
-        );
+await showShopAlert(
+    "Đơn hàng của bạn đã được ghi nhận!\n\n" +
+    "Mã đơn hàng: " + result.orderId + "\n" +
+    "Tổng thanh toán: " + money(result.total) + "\n\n" +
+    "Cửa hàng sẽ liên hệ với bạn để xác nhận và giao hàng.",
+    "success"
+);
 
     } catch (error) {
         console.error("Lỗi đặt hàng:", error);
 
-        alert(
-            "❌ " + error.message + "\n\n" +
-            "Giỏ hàng vẫn được giữ lại. " +
-            "Vui lòng kiểm tra trước khi thử lại."
-        );
+await showShopAlert(
+    error.message + "\n\n" +
+    "Giỏ hàng của bạn vẫn được giữ nguyên.\n" +
+    "Vui lòng kiểm tra thông tin hoặc thử lại sau.",
+    "error"
+);
 
     } finally {
         submitButton.disabled = false;
