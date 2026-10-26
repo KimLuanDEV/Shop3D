@@ -423,9 +423,9 @@
 
 <p class="note">
     Chọn tối đa 5 ảnh JPG, PNG hoặc WebP.
-    Mỗi ảnh không quá 1,5 MB.
+    Có thể chọn ảnh gốc dung lượng tối đa 10 MB/ảnh.
+    Hệ thống sẽ tự động tối ưu ảnh trước khi đăng.
     Ảnh đầu tiên là ảnh đại diện.
-    Có thể xóa từng ảnh trước khi lưu.
 </p>
 
 
@@ -614,43 +614,124 @@ function renderImagePreviews() {
 }
 
 
-// Đọc ảnh thành Base64
-function readImageFile(file) {
+/* =========================================================
+   ĐỌC + TỰ ĐỘNG TỐI ƯU ẢNH
+========================================================= */
+
+function optimizeImage(file) {
 
     return new Promise((resolve, reject) => {
 
         const reader = new FileReader();
 
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(
-            new Error("Không thể đọc ảnh")
-        );
+        reader.onerror = () => {
+            reject(new Error("Không thể đọc ảnh"));
+        };
+
+        reader.onload = () => {
+
+            const img = new Image();
+
+            img.onerror = () => {
+                reject(new Error("Không thể xử lý ảnh"));
+            };
+
+            img.onload = () => {
+
+                // Kích thước tối đa của ảnh sau khi xử lý
+                const MAX_WIDTH = 1600;
+                const MAX_HEIGHT = 1600;
+
+                let width = img.width;
+                let height = img.height;
+
+                // Thu nhỏ nhưng giữ nguyên tỷ lệ
+                const ratio = Math.min(
+                    MAX_WIDTH / width,
+                    MAX_HEIGHT / height,
+                    1
+                );
+
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+
+                const canvas = document.createElement("canvas");
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext("2d");
+
+                // Nền trắng để xử lý ảnh PNG có trong suốt
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(
+                    0,
+                    0,
+                    width,
+                    height
+                );
+
+                ctx.drawImage(
+                    img,
+                    0,
+                    0,
+                    width,
+                    height
+                );
+
+                // Chuyển thành WebP để giảm dung lượng
+                const optimized = canvas.toDataURL(
+                    "image/webp",
+                    0.82
+                );
+
+                resolve(optimized);
+            };
+
+            img.src = reader.result;
+        };
 
         reader.readAsDataURL(file);
     });
 }
 
 
-// Xử lý chọn nhiều ảnh
+/* =========================================================
+   CHỌN TỐI ĐA 5 ẢNH
+========================================================= */
+
 $("image").onchange = async (event) => {
 
     const files = Array.from(event.target.files);
 
-    // Cho phép chọn thêm ảnh trong lần tiếp theo
+    // Cho phép chọn thêm ảnh sau đó
     event.target.value = "";
 
-    if (files.length === 0) return;
+    if (files.length === 0) {
+        return;
+    }
 
-    // Giới hạn tối đa 5 ảnh
+
+    /* ================================
+       KIỂM TRA SỐ LƯỢNG
+    ================================= */
+
     if (imagesData.length + files.length > 5) {
 
         alert(
-            "Mỗi sản phẩm chỉ được có tối đa 5 ảnh.\n" +
-            "Hiện đã có " + imagesData.length + " ảnh."
+            "Mỗi sản phẩm chỉ được tối đa 5 ảnh.\n" +
+            "Hiện tại đã có " +
+            imagesData.length +
+            " ảnh."
         );
 
         return;
     }
+
+
+    /* ================================
+       KIỂM TRA ĐỊNH DẠNG
+    ================================= */
 
     const allowedTypes = [
         "image/jpeg",
@@ -658,52 +739,69 @@ $("image").onchange = async (event) => {
         "image/webp"
     ];
 
-    const maxSize = 1.5 * 1024 * 1024;
+    // Cho phép ảnh gốc tối đa 10 MB
+    const MAX_ORIGINAL_SIZE =
+        10 * 1024 * 1024;
 
-    // Kiểm tra từng ảnh
+
     for (const file of files) {
 
         if (!allowedTypes.includes(file.type)) {
 
             alert(
-                "Ảnh " + file.name +
-                " không đúng định dạng JPG, PNG hoặc WebP."
+                'Ảnh "' +
+                file.name +
+                '" không đúng định dạng.'
             );
 
             return;
         }
 
-        if (file.size > maxSize) {
+
+        if (file.size > MAX_ORIGINAL_SIZE) {
 
             alert(
-                "Ảnh " + file.name +
-                " vượt quá dung lượng 1,5 MB."
+                'Ảnh "' +
+                file.name +
+                '" vượt quá 10 MB.'
             );
 
             return;
         }
     }
 
+
+    /* ================================
+       TỐI ƯU ẢNH
+    ================================= */
+
     try {
 
-        // Đọc toàn bộ ảnh được chọn
-        const newImages = await Promise.all(
-            files.map(readImageFile)
-        );
+        const newImages = [];
 
-        // Bổ sung ảnh vào danh sách hiện tại
+        for (const file of files) {
+
+            const optimized =
+                await optimizeImage(file);
+
+            newImages.push(optimized);
+        }
+
+
         imagesData.push(...newImages);
 
-        // Hiển thị ảnh chính và ảnh phụ
         renderImagePreviews();
+
 
     } catch (error) {
 
         console.error(error);
-        alert("Không thể đọc hình ảnh.");
+
+        alert(
+            "Không thể xử lý hình ảnh."
+        );
     }
 };
-
 
         /* =========================================
            19. YÊU CẦU MẬT KHẨU ADMIN

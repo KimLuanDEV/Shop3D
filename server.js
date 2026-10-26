@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import crypto from 'node:crypto';
 const app=express();
 const root=path.join(path.dirname(fileURLToPath(import.meta.url)),'public');
-app.use(express.json({ limit: "12mb" }));
+app.use(express.json({ limit: "16mb" }));
 
 
 
@@ -351,7 +351,7 @@ return Array.isArray(images) &&
 
         const bytes = base64.length * 3 / 4 - padding;
 
-        return bytes <= 1.5 * 1024 * 1024;
+        return bytes <= 2.5 * 1024 * 1024;
     });
 
 }
