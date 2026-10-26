@@ -195,13 +195,16 @@
             border: 0;
         }
 
-        .item img {
-            width: 90px;
-            height: 90px;
-            object-fit: cover;
-            border-radius: 10px;
-            background: #f1f5f9;
+
+         .item img {
+           width: 90px;
+           height: 90px;
+           object-fit: contain;
+           padding: 5px;
+           border-radius: 10px;
+           background: #f1f5f9;
         }
+
 
         .item-content {
             flex: 1;
@@ -252,6 +255,52 @@
                 padding: 18px;
             }
         }
+
+
+        
+.image-previews {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.image-preview-item {
+    position: relative;
+    padding: 6px;
+    border: 1px solid #dce7df;
+    border-radius: 10px;
+    background: #f7faf7;
+}
+
+.image-preview-item img {
+    width: 100%;
+    height: 95px;
+    object-fit: contain;
+}
+
+.image-preview-item button {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    border: 0;
+    border-radius: 50%;
+    background: #dc2626;
+    color: white;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+}
+
+.image-preview-item small {
+    display: block;
+    text-align: center;
+    font-size: 11px;
+    color: #64748b;
+}
+
+
+
     </style>
 </head>
 
@@ -360,26 +409,25 @@
                     ></textarea>
 
                     <!-- Hình ảnh -->
-                    <label for="image">
-                        Hình ảnh sản phẩm
-                    </label>
 
-                    <input
-                        id="image"
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                    >
+<label for="image">Hình ảnh sản phẩm (tối đa 5 ảnh)</label>
 
-                    <img
-                        id="preview"
-                        class="preview"
-                        alt="Ảnh xem trước"
-                        hidden
-                    >
+<input
+    id="image"
+    type="file"
+    accept="image/png,image/jpeg,image/webp"
+    multiple
+>
 
-                    <p class="note">
-                        Chọn ảnh JPG, PNG hoặc WebP tối đa 1,5 MB.
-                    </p>
+<div id="imagePreviews" class="image-previews"></div>
+
+<p class="note">
+    Chọn tối đa 5 ảnh JPG, PNG hoặc WebP.
+    Mỗi ảnh không quá 1,5 MB.
+    Ảnh đầu tiên là ảnh đại diện.
+    Có thể xóa từng ảnh trước khi lưu.
+</p>
+
 
                     <!-- Nút thao tác -->
                     <div class="actions">
@@ -448,7 +496,7 @@
 
         let products = [];
         let editing = null;
-        let imageData = "";
+        let imagesData = [];
 
         let password =
             sessionStorage.getItem("shop3d_admin_password") || "";
@@ -503,67 +551,159 @@
            17. ĐẶT LẠI FORM
         ========================================== */
 
-        function reset() {
-            editing = null;
-            imageData = "";
 
-            $("productForm").reset();
-            $("stock").value = 1;
+function reset() {
+    editing = null;
+    imagesData = [];
 
-            $("preview").hidden = true;
-            $("preview").removeAttribute("src");
+    $("productForm").reset();
+    $("stock").value = 1;
+    $("image").value = "";
 
-            $("formTitle").textContent = "Thêm sản phẩm mới";
-            $("submitBtn").textContent = "Đăng sản phẩm";
+    renderImagePreviews();
+
+    $("formTitle").textContent = "Thêm sản phẩm mới";
+    $("submitBtn").textContent = "Đăng sản phẩm";
+}
+
+
+
+$("resetBtn").onclick = reset;
+
+/* =========================================
+   18. CHỌN VÀ XEM TRƯỚC TỐI ĐA 5 ẢNH
+========================================= */
+
+// Hiển thị danh sách ảnh đã chọn
+function renderImagePreviews() {
+
+    const container = $("imagePreviews");
+    container.replaceChildren();
+
+    imagesData.forEach((src, index) => {
+
+        const item = document.createElement("div");
+        item.className = "image-preview-item";
+
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = "Ảnh sản phẩm " + (index + 1);
+
+        const label = document.createElement("small");
+        label.textContent = index === 0
+            ? "Ảnh chính"
+            : "Ảnh phụ " + index;
+
+        // Nút xóa từng ảnh
+        const removeButton = document.createElement("button");
+        removeButton.type = "button";
+        removeButton.textContent = "×";
+        removeButton.title = "Xóa ảnh";
+
+        removeButton.onclick = () => {
+
+            imagesData.splice(index, 1);
+
+            // Ảnh đầu tiên còn lại trở thành ảnh chính
+            renderImagePreviews();
+        };
+
+        item.append(img, label, removeButton);
+        container.appendChild(item);
+    });
+}
+
+
+// Đọc ảnh thành Base64
+function readImageFile(file) {
+
+    return new Promise((resolve, reject) => {
+
+        const reader = new FileReader();
+
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(
+            new Error("Không thể đọc ảnh")
+        );
+
+        reader.readAsDataURL(file);
+    });
+}
+
+
+// Xử lý chọn nhiều ảnh
+$("image").onchange = async (event) => {
+
+    const files = Array.from(event.target.files);
+
+    // Cho phép chọn thêm ảnh trong lần tiếp theo
+    event.target.value = "";
+
+    if (files.length === 0) return;
+
+    // Giới hạn tối đa 5 ảnh
+    if (imagesData.length + files.length > 5) {
+
+        alert(
+            "Mỗi sản phẩm chỉ được có tối đa 5 ảnh.\n" +
+            "Hiện đã có " + imagesData.length + " ảnh."
+        );
+
+        return;
+    }
+
+    const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+    ];
+
+    const maxSize = 1.5 * 1024 * 1024;
+
+    // Kiểm tra từng ảnh
+    for (const file of files) {
+
+        if (!allowedTypes.includes(file.type)) {
+
+            alert(
+                "Ảnh " + file.name +
+                " không đúng định dạng JPG, PNG hoặc WebP."
+            );
+
+            return;
         }
 
-        $("resetBtn").onclick = reset;
+        if (file.size > maxSize) {
 
-        /* =========================================
-           18. CHỌN VÀ XEM TRƯỚC HÌNH ẢNH
-        ========================================== */
+            alert(
+                "Ảnh " + file.name +
+                " vượt quá dung lượng 1,5 MB."
+            );
 
-        $("image").onchange = async (event) => {
-            const file = event.target.files[0];
+            return;
+        }
+    }
 
-            if (!file) {
-                return;
-            }
+    try {
 
-            const allowedTypes = [
-                "image/jpeg",
-                "image/png",
-                "image/webp"
-            ];
+        // Đọc toàn bộ ảnh được chọn
+        const newImages = await Promise.all(
+            files.map(readImageFile)
+        );
 
-            const maxSize = 1.5 * 1024 * 1024;
+        // Bổ sung ảnh vào danh sách hiện tại
+        imagesData.push(...newImages);
 
-            if (
-                !allowedTypes.includes(file.type) ||
-                file.size > maxSize
-            ) {
-                alert("Ảnh JPG, PNG, WebP tối đa 1,5MB");
-                event.target.value = "";
-                return;
-            }
+        // Hiển thị ảnh chính và ảnh phụ
+        renderImagePreviews();
 
-            try {
-                imageData = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
+    } catch (error) {
 
-                    reader.onload = () => resolve(reader.result);
-                    reader.onerror = reject;
+        console.error(error);
+        alert("Không thể đọc hình ảnh.");
+    }
+};
 
-                    reader.readAsDataURL(file);
-                });
-
-                $("preview").src = imageData;
-                $("preview").hidden = false;
-
-            } catch (error) {
-                alert("Không thể đọc hình ảnh.");
-            }
-        };
 
         /* =========================================
            19. YÊU CẦU MẬT KHẨU ADMIN
@@ -604,7 +744,8 @@
                 category: $("category").value,
                 stock: Number($("stock").value),
                 description: $("description").value.trim(),
-                image: imageData
+                image: imagesData[0] || "",
+                images: imagesData
             };
 
             const isEditing = Boolean(editing);
@@ -639,34 +780,42 @@
            21. ĐƯA SẢN PHẨM LÊN FORM ĐỂ SỬA
         ========================================== */
 
-        function editProduct(product) {
-            editing = product.id;
-            imageData = product.image || "";
 
-            $("name").value = product.name;
-            $("price").value = product.price;
-            $("category").value = product.category;
-            $("stock").value = product.stock;
-            $("description").value = product.description || "";
+function editProduct(product) {
 
-            $("preview").hidden = !product.image;
+    editing = product.id;
 
-            if (product.image) {
-                $("preview").src = product.image;
-            } else {
-                $("preview").removeAttribute("src");
-            }
+    // Nạp tối đa 5 ảnh đã lưu
+    imagesData = Array.isArray(product.images) &&
+                 product.images.length
+        ? [...product.images].slice(0, 5)
+        : product.image
+            ? [product.image]
+            : [];
 
-            $("image").value = "";
+    // Nạp thông tin sản phẩm
+    $("name").value = product.name;
+    $("price").value = product.price;
+    $("category").value = product.category;
+    $("stock").value = product.stock;
+    $("description").value = product.description || "";
 
-            $("formTitle").textContent = "Chỉnh sửa sản phẩm";
-            $("submitBtn").textContent = "Lưu thay đổi";
+    // Xóa lựa chọn tệp trước đó
+    $("image").value = "";
 
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth"
-            });
-        }
+    // Hiển thị ảnh chính và các ảnh phụ
+    renderImagePreviews();
+
+    // Cập nhật tiêu đề và nút lưu
+    $("formTitle").textContent = "Chỉnh sửa sản phẩm";
+    $("submitBtn").textContent = "Lưu thay đổi";
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
+
 
         /* =========================================
            22. XÓA SẢN PHẨM
@@ -815,6 +964,12 @@
         $("search").oninput = render;
 
         load();
+
+
+
+        
+
+
 
     </script>
 

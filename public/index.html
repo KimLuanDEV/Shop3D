@@ -1410,6 +1410,149 @@ footer {
 
 
 
+
+.product-detail-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.product-detail-modal[hidden] {
+    display: none;
+}
+
+.product-detail-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, .65);
+}
+
+.product-detail-box {
+    position: relative;
+    background: white;
+    border-radius: 20px;
+    width: min(850px, 100%);
+    max-height: 90dvh;
+    overflow-y: auto;
+    padding: 25px;
+}
+
+.product-detail-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 50%;
+    background: #f0f3f0;
+}
+
+.product-detail-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+}
+
+.product-detail-main {
+    height: 350px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f7faf7;
+    border-radius: 14px;
+}
+
+.product-detail-main img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.product-detail-thumbnails {
+    display: flex;
+    gap: 9px;
+    margin-top: 12px;
+    overflow-x: auto;
+}
+
+.product-detail-thumbnails button {
+    width: 68px;
+    height: 68px;
+    flex-shrink: 0;
+    padding: 4px;
+    border: 2px solid #e0e9e0;
+    border-radius: 9px;
+    background: white;
+}
+
+.product-detail-thumbnails button.active {
+    border-color: #168546;
+}
+
+.product-detail-thumbnails img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.product-detail-info {
+    padding-top: 25px;
+}
+
+.product-detail-info h2 {
+    color: #173a29;
+}
+
+.product-detail-price {
+    font-size: 25px;
+    font-weight: 800;
+    color: #168546;
+    margin: 16px 0;
+}
+
+.product-detail-info p {
+    white-space: pre-wrap;
+    line-height: 1.7;
+    color: #607366;
+}
+
+.grid .product .visual,
+.grid .product .info h3 {
+    cursor: pointer;
+}
+
+@media (max-width: 600px) {
+    .product-detail-layout {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .product-detail-box {
+        padding: 18px;
+    }
+
+    .product-detail-main {
+        height: 260px;
+    }
+
+    .product-detail-info {
+        padding-top: 0;
+    }
+
+    .product-detail-thumbnails button {
+        width: 58px;
+        height: 58px;
+    }
+}
+
+
+
 </style>
  </head>
  <body>
@@ -1712,6 +1855,48 @@ footer {
 
 
 
+<div id="productDetailModal" class="product-detail-modal"
+     role="dialog" aria-modal="true"
+     aria-label="Chi tiết sản phẩm" hidden>
+
+    <div class="product-detail-backdrop"
+         onclick="closeProductDetail()"></div>
+
+    <div class="product-detail-box">
+        <button class="product-detail-close"
+                onclick="closeProductDetail()"
+                aria-label="Đóng">✕</button>
+
+        <div class="product-detail-layout">
+            <div>
+                <div class="product-detail-main">
+                    <img id="detailMainImage" alt="Ảnh sản phẩm">
+                </div>
+                <div id="detailThumbnails"
+                     class="product-detail-thumbnails"></div>
+            </div>
+
+            <div class="product-detail-info">
+                <small id="detailCategory"></small>
+                <h2 id="detailName"></h2>
+                <div id="detailPrice"
+                     class="product-detail-price"></div>
+                <p id="detailDescription"></p>
+
+                <button id="detailAddButton"
+                        class="checkout"
+                        type="button">
+                    + Thêm vào giỏ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
   <script >
 "use strict";
 
@@ -1979,7 +2164,8 @@ function createProductCard(product) {
         : "";
 
     return `
-        <article class="product">
+        <article class="product"
+         data-product-id="${escapeHTML(product.id)}">
 
             <div class="visual">
                 ${tag}
@@ -2534,6 +2720,7 @@ async function handleOrderSubmit(event) {
    12. KHỞI TẠO VÀ GẮN SỰ KIỆN
 ========================================================= */
 
+
 function initializeShop() {
 
     // Đọc giỏ hàng đã lưu
@@ -2546,31 +2733,58 @@ function initializeShop() {
     );
 
 
-/* =========================================================
-   THÊM SẢN PHẨM + HIỆU ỨNG BAY VÀO GIỎ
-========================================================= */
+    /* =========================================================
+       XỬ LÝ CLICK SẢN PHẨM VÀ THÊM VÀO GIỎ HÀNG
+    ========================================================= */
 
-$("grid").addEventListener("click", (event) => {
+    $("grid").addEventListener("click", (event) => {
 
-    const button = event.target.closest("[data-add-id]");
+        // Kiểm tra khách có bấm nút Thêm vào giỏ không
+        const addButton = event.target.closest("[data-add-id]");
 
-    if (!button) {
-        return;
-    }
+        if (addButton) {
 
-    // Lấy ID sản phẩm
-    const productId = button.dataset.addId;
+            const productId = addButton.dataset.addId;
 
-    // Thêm sản phẩm vào giỏ như bình thường
-    add(productId);
+            // Thêm sản phẩm vào giỏ
+            add(productId);
 
-    // Kích hoạt hiệu ứng bay từ sản phẩm vào giỏ
-    flyToCart(button);
-});
+            // Hiệu ứng sản phẩm bay vào giỏ
+            flyToCart(addButton);
+
+            // Không mở chi tiết sản phẩm
+            return;
+        }
 
 
-    // Xử lý tăng giảm số lượng trong giỏ
+        /* =====================================================
+           MỞ CHI TIẾT SẢN PHẨM
+        ===================================================== */
+
+        // Tìm thẻ sản phẩm được bấm
+        const productCard = event.target.closest(
+            "[data-product-id]"
+        );
+
+        if (!productCard) {
+            return;
+        }
+
+        // Lấy ID sản phẩm
+        const productId = productCard.dataset.productId;
+
+        // Mở giao diện chi tiết có ảnh chính và ảnh phụ
+        openProductDetail(productId);
+
+    });
+
+
+    /* =========================================================
+       XỬ LÝ TĂNG GIẢM SỐ LƯỢNG TRONG GIỎ
+    ========================================================= */
+
     $("cartItems").addEventListener("click", (event) => {
+
         const button = event.target.closest("[data-change-id]");
 
         if (!button) {
@@ -2581,20 +2795,28 @@ $("grid").addEventListener("click", (event) => {
             button.dataset.changeId,
             Number(button.dataset.delta)
         );
+
     });
 
-    // Xử lý xác nhận đặt hàng
+
+    /* =========================================================
+       XỬ LÝ XÁC NHẬN ĐẶT HÀNG
+    ========================================================= */
+
     $("orderForm").addEventListener(
         "submit",
         handleOrderSubmit
     );
 
+
     // Cập nhật số lượng giỏ hàng
     updateCount();
 
-    // Lấy sản phẩm từ máy chủ
+    // Lấy danh sách sản phẩm từ máy chủ
     loadProducts();
+
 }
+
 
 // Chạy khi trang HTML đã sẵn sàng
 if (document.readyState === "loading") {
@@ -2605,6 +2827,83 @@ if (document.readyState === "loading") {
 } else {
     initializeShop();
 }
+
+
+
+
+function openProductDetail(productId) {
+    const product = products.find(p =>
+        String(p.id) === String(productId)
+    );
+
+    if (!product) return;
+
+    const images = Array.isArray(product.images) &&
+                   product.images.length
+        ? product.images
+        : product.image ? [product.image] : [];
+
+    const mainImage = $("detailMainImage");
+    const thumbnails = $("detailThumbnails");
+
+    $("detailName").textContent = product.name;
+    $("detailCategory").textContent = product.category;
+    $("detailPrice").textContent = money(product.price);
+    $("detailDescription").textContent =
+        product.description || "Chưa có mô tả sản phẩm.";
+
+    mainImage.hidden = images.length === 0;
+    mainImage.src = images[0] || "";
+    mainImage.alt = product.name;
+
+    thumbnails.replaceChildren();
+
+    images.forEach((src, index) => {
+        const button = document.createElement("button");
+        button.type = "button";
+
+        if (index === 0) {
+            button.classList.add("active");
+        }
+
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = `Ảnh ${index + 1}`;
+
+        button.appendChild(img);
+
+        button.onclick = () => {
+            mainImage.src = src;
+
+            thumbnails.querySelectorAll("button")
+                .forEach(b => b.classList.remove("active"));
+
+            button.classList.add("active");
+        };
+
+        thumbnails.appendChild(button);
+    });
+
+    $("detailAddButton").onclick = () => {
+        add(product.id);
+    };
+
+    $("productDetailModal").hidden = false;
+    document.body.style.overflow = "hidden";
+}
+
+function closeProductDetail() {
+    $("productDetailModal").hidden = true;
+    document.body.style.overflow = "";
+}
+
+document.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+        closeProductDetail();
+    }
+});
+
+
 
   </script>
 
